@@ -10,7 +10,8 @@
 $.gadgeteer = function() {}
 
 $.extend($.gadgeteer, {
-  
+ 
+  // Call this function to store options to gadgeteer 
   init: function(options) {
 
     if ($.gadgeteer.options) 
@@ -116,11 +117,16 @@ $.extend($.gadgeteer, {
     }, 50);
   },
 
+  is_development: function(){
+    if($.gadgeteer.options.version && $.gadgeteer.options.version.match('development')){
+      return true;
+    }
+    return false;
+  },
+
   setup_ajax_calls: function(){
     $(document).ajaxSend(function(e, request, settings) {
-      if (settings.target && $.gadgeteer.options.loadingMessage) {
-        $(settings.target).append($.gadgeteer.loadingElem());
-      }
+      $.gadgeteer.show_loading_message(settings.target);
     })
     
     
@@ -130,32 +136,24 @@ $.extend($.gadgeteer, {
         var html = request.responseText;
         $(settings.target).html(html);
       }
-      // !iframe
-      $(window).adjustHeight();
-      // Do another adjustHeight in 250ms just to be sure
-      setTimeout(function() {$(window).adjustHeight();}, 250);
+      $.gadgeteer.fit_height();
     })
-    
-    
+
+ 
     .ajaxError(function(e, request, settings, exception) {
       if( typeof(request.status) == 'undefined' || request.status.toString().charAt(0) == '5'){ 
-        //timeout error
-        if(settings.target) {
-          if ($.gadgeteer.LOADING_ELEM) $.gadgeteer.LOADING_ELEM.remove();
-          if($.gadgeteer.options.errorMessage) $(settings.target).append($.gadgeteer.errorElem());
-        }
+        show_error_message(settings.target);
       }
-      else
-      {
+      else {
         if (settings.target && request.status.toString().charAt(0) != '3') {
           var html = request.responseText;
           if( html != 'Error 0' ){
-            jQuery(settings.target).html(html);
+            if($.gadgeteer.is_development())
+              jQuery(settings.target).html(html);
+            else
+              show_error_message(settings.target);  
           }
-          // !iframe
-          $(window).adjustHeight();
-          // Do another adjustHeight in 250ms just to be sure
-          setTimeout(function() {$(window).adjustHeight();}, 250);
+          $.gadgeteer.fit_height();
         }
       }
     })
@@ -190,17 +188,60 @@ $.extend($.gadgeteer, {
     });
   },
 
+  fit_height: function() {
+    // !iframe
+    $(window).adjustHeight();
+    // Do another adjustHeight in 250ms just to be sure
+    setTimeout(function() {$(window).adjustHeight();}, 250);
+  },
+
+  show_error_message: function(target){
+    var the_target = target || $.gadgeteer.defaultTarget;
+    if ($.gadgeteer.LOADING_ELEM) 
+      $.gadgeteer.LOADING_ELEM.remove();
+    if($.gadgeteer.options.errorMessage) 
+      $(the_target).append($.gadgeteer.errorElem());
+  },
+
+  show_loading_message: function(target){
+    var the_target = target || $.gadgeteer.defaultTarget;
+    if ($.gadgeteer.options.loadingMessage) {
+      $(the_target).append($.gadgeteer.loadingElem());
+    }
+  },
+
+  call_opensocial: function(rest_command,callback){
+    var error_timer = true;
+
+    var create_timer = function(){
+      return (function(){ 
+          if(error_timer) $.gadgeteer.show_error_message();
+        });
+    }
+
+    var the_timer = create_timer();
+    var timeout = $.gadgeteer.options.http_timeout || 5000; 
+   
+    setTimeout( the_timer, timeout );
+
+    $.getData(rest_command, function(data,status){
+        error_timer = false;
+        callback(data,status);
+      }
+    );
+  },
+
   get_owner_and_viewer_data: function(){
     // Get information about the viewer and owner
-    $.getData('/people/@viewer/@self', function(data, status) {
+    $.gadgeteer.call_opensocial('/people/@viewer/@self', function(data, status) {
       $.gadgeteer.viewer = data[0];
       $.gadgeteer.viewer.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.viewer, 'viewer')};
     });
-    $.getData('/people/@owner/@self', function(data, status) {
+    $.gadgeteer.call_opensocial('/people/@owner/@self', function(data, status) {
       $.gadgeteer.owner = data[0];
       $.gadgeteer.owner.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.owner, 'owner')};
     });
-    $.getData('/appdata/', function(data, status) {
+    $.gadgeteer.call_opensocial('/appdata/', function(data, status) {
       for (var id in data) {
         data = data[id];
         break;
@@ -216,6 +257,14 @@ $.extend($.gadgeteer, {
           return value;
         }
       };
+    });
+  },
+
+  test_error: function(){
+    $.gadgeteer.call_opensocial('/people_fail/@owner/@self', function(data, status) {
+
+      $.gadgeteer.owner = data[0];
+      $.gadgeteer.owner.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.owner, 'owner')};
     });
   },
 
@@ -301,7 +350,10 @@ $.extend($.gadgeteer, {
   },
 
   ajaxRequest: function(e) {
-    e.preventDefault();
+    if (e !== undefined) {
+      e.preventDefault();
+    }
+
     var host = document.location.host;
     var link = $(this);
     var href = link.attr('href');
