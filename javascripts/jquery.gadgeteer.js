@@ -142,7 +142,7 @@ $.extend($.gadgeteer, {
  
     .ajaxError(function(e, request, settings, exception) {
       if( typeof(request.status) == 'undefined' || request.status.toString().charAt(0) == '5'){ 
-        show_error_message(settings.target);
+        $.gadgeteer.show_error_message(settings.target);
       }
       else {
         if (settings.target && request.status.toString().charAt(0) != '3') {
@@ -151,7 +151,7 @@ $.extend($.gadgeteer, {
             if($.gadgeteer.is_development())
               jQuery(settings.target).html(html);
             else
-              show_error_message(settings.target);  
+              $.gadgeteer.show_error_message(settings.target);  
           }
           $.gadgeteer.fit_height();
         }
