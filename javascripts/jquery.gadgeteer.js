@@ -226,7 +226,8 @@ $.extend($.gadgeteer, {
 
     $.getData(rest_command, function(data,status){
         error_timer = false;
-        callback(data,status);
+        if( typeof(callback) == 'function' )
+          callback(data,status);
       }
     );
   },
