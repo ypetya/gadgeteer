@@ -44,7 +44,8 @@ $.gadgeteer.init({
   submitSendingMessage: 'Küldés...',
   linkBehaviours: Gadget.linkBehaviours,
   dontAddOsParams: true,
-  version: version
+  version: version,
+  ajaxCache: false
 });
 
 // Step 2.
@@ -57,6 +58,7 @@ $.gadgeteer.start( Gadget.init );
 
 // enjoy
 */
+
 
 (function($) {
 
@@ -71,7 +73,7 @@ $.extend($.gadgeteer, {
         noAjaxForms: false,
         // This element is the default target of ajax calls
         defaultTarget: '#page',
-        // You can specify the http_timeout in milliseconds
+        // You can specify the http_timeout in milliseconds for getData requests
         http_timeout: 5000,
         host: false,
         linkBehaviours: {},
@@ -84,14 +86,20 @@ $.extend($.gadgeteer, {
         // Its the same as loading but it will shown only on error
         customErrorElement: false,
         errorMessage: 'Something went wrong! Please refresh!',
-        // if this contains "development" it will print out http error codes
-        version: 'unknown'
+        // if this contains "development" -> sets up development mode: 
+        // it will print out http error codes and enables debug
+        version: 'unknown',
+        // if this is true, we allow to cache ajax too
+        ajaxCache: false,
+        // if you set it up true, it will log to console. 
+        // In development mode it will set this to true...
+        debug: false
     },
 
 
     // initialize gadgeteer ...
-    init: function(options) {
-        if(load_options(options)){
+    init: function(options) { $.gadgeteer.log('init', true);
+        if($.gadgeteer.load_options(options)){
 
             if ( !$.gadgeteer.options.noAjaxLinks )
                 $.gadgeteer.init_link_behaviour();
@@ -111,30 +119,35 @@ $.extend($.gadgeteer, {
     },
 
 
+
+
     // This will load options for first time
-    load_options: function(options){
+    load_options: function(options){ $.gadgeteer.log('load_options');
         // load options
         if ($.gadgeteer.options) 
             return false;
         else
-            $.gadgeteer.options = options = options || $.gadgeteer.default_options;
+            $.gadgeteer.options = options || $.gadgeteer.default_options;
 
         // fill locals from options
-        $.gadgeteer.defaultTarget = options.defaultTarget;
-        if(options.host)
-            $.gadgeteer.host = options.host;
-        $.gadgeteer.linkBehaviours = options.linkBehaviours;
+        $.gadgeteer.defaultTarget = $.gadgeteer.options.defaultTarget;
+        if($.gadgeteer.options.host)
+            $.gadgeteer.host = $.gadgeteer.options.host;
+        $.gadgeteer.linkBehaviours = $.gadgeteer.options.linkBehaviours;
 
-        if(options.customLoadingElement)
-            $.gadgeteer.LOADING_ELEM = $(options.customLoadingElement);
-        if(options.customErrorElement)
-            $.gadgeteer.ERROR_ELEM = $(options.customErrorElement);
+        if($.gadgeteer.options.customLoadingElement)
+            $.gadgeteer.LOADING_ELEM = $($.gadgeteer.options.customLoadingElement);
+        if($.gadgeteer.options.customErrorElement)
+            $.gadgeteer.ERROR_ELEM = $($.gadgeteer.options.customErrorElement);
+        // in development mode: we need debug anyway
+        if($.gadgeteer.is_development())
+            $.gadgeteer.options.debug = true;
 
         return true;
     },
 
 
-    start: function(callback) {
+    start: function(callback) { $.gadgeteer.log('start');
         $.gadgeteer.get_owner_and_viewer_data();
         // Wait for everything to load then call the callback
         if($.isFunction(callback))
@@ -142,14 +155,14 @@ $.extend($.gadgeteer, {
     },
 
 
-    init_link_behaviour: function() {
+    init_link_behaviour: function() { $.gadgeteer.log('init_link_behaviour');
         $('a').livequery('click', function(e) {
             $.gadgeteer.handleLinkBehaviour.call($(this), e);
         }).removeAttr('onclick');
     },
   
 
-    init_ajax_forms: function() {
+    init_ajax_forms: function() { $.gadgeteer.log('init_ajax_forms');
         // Making sure submit input element values are submitted
         $('form input[type=submit]').livequery('click', function(e) {
             $(this).parents('form:eq(0)').data('submitClicked', $(this));
@@ -196,7 +209,7 @@ $.extend($.gadgeteer, {
     },
 
   
-    call_init_callback: function(callback){
+    call_init_callback: function(callback){ $.gadgeteer.log('call_init_callback');
         setTimeout(function() {
                 if ($.gadgeteer.viewer && $.gadgeteer.owner && $.gadgeteer.data) {
                     // Navigate away if params tell so
@@ -216,7 +229,7 @@ $.extend($.gadgeteer, {
     },
 
 
-    is_development: function(){
+    is_development: function(){ $.gadgeteer.log('is_development');
         if($.gadgeteer.options.version && $.gadgeteer.options.version.match('development')){
             return true;
         }
@@ -224,13 +237,34 @@ $.extend($.gadgeteer, {
     },
 
 
-    setup_ajax_calls: function(){
+    // watch what we have done
+    log: function(msg, force){
+        // if we forced to log or settings say to log ...
+        if( ( force || ( ! ($.gadgeteer.options === undefined) && $.gadgeteer.options.debug) ) 
+                // and we have the option to log ...
+                && !(console === undefined) && !(console.log === undefined) )
+            // log
+            console.log(' gadgeteer : ' + msg);
+    },
+
+
+    setup_ajax_calls: function(){ $.gadgeteer.log('setup_ajax_calls');
+        var ajaxSetupParams = {};
+
+        if( !$.gadgeteer.options.ajaxCache )
+            ajaxSetupParams['cache'] = false;
+
+        if( $.gadgeteer.defaultTarget )
+            ajaxSetupParams['target'] = $.gadgeteer.defaultTarget;
+
+        $.ajaxSetup(ajaxSetupParams);
+
         $(document).ajaxSend(function(e, request, settings) {
             $.gadgeteer.show_loading_message(settings.target, true);
         })
     
     
-    .ajaxSuccess(function(e, request, settings) {
+    .ajaxSuccess(function(e, request, settings) { $.gadgeteer.log('ajaxSuccess : ' + request.url );
         $.gadgeteer.currentUrl = request.url;
         if (settings.target) {
             var html = request.responseText;
@@ -240,8 +274,8 @@ $.extend($.gadgeteer, {
     })
 
  
-    .ajaxError(function(e, request, settings, exception) {
-        if( typeof(request.status) == 'undefined' || request.status.toString().charAt(0) == '5') 
+    .ajaxError(function(e, request, settings, exception) { $.gadgeteer.log('ajaxError');
+        if( request.status === undefined || request.status.toString().charAt(0) == '5') 
             $.gadgeteer.show_error_message(settings.target);
         else {
             if (settings.target && request.status.toString().charAt(0) != '3') {
@@ -258,9 +292,9 @@ $.extend($.gadgeteer, {
     })
 
 
-    .ajaxComplete(function(e, request, settings) {
+    .ajaxComplete(function(e, request, settings) { $.gadgeteer.log('ajaxComplete');
         $.gadgeteer.hide_loading_message();
-            if( typeof(request.status) == 'undefined' ){ 
+            if( request.status === undefined ){ 
                 //timeout error
                 //nothing to do...
             }
@@ -289,7 +323,7 @@ $.extend($.gadgeteer, {
     },
 
 
-    fit_height: function() {
+    fit_height: function() { $.gadgeteer.log('fit_height');
         // !iframe
         $(window).adjustHeight();
         // Do another adjustHeight in 250ms just to be sure
@@ -297,13 +331,13 @@ $.extend($.gadgeteer, {
     },
 
 
-    hide_loading_message: function(){
+    hide_loading_message: function(){ $.gadgeteer.log('hide_loading_message');
         if ($.gadgeteer.LOADING_ELEM) 
             $.gadgeteer.LOADING_ELEM.remove();
     },
 
 
-    show_error_message: function(target){
+    show_error_message: function(target){ $.gadgeteer.log('show_error_message');
         var the_target = target || $.gadgeteer.defaultTarget;
 
         $.gadgeteer.hide_loading_message();
@@ -313,7 +347,7 @@ $.extend($.gadgeteer, {
     },
 
 
-    show_loading_message: function(target, force){
+    show_loading_message: function(target, force){ $.gadgeteer.log('show_loading_message');
         var the_target = target || $.gadgeteer.defaultTarget;
         var e = $.gadgeteer.loadingElem();
 
@@ -322,7 +356,7 @@ $.extend($.gadgeteer, {
     },
 
 
-    call_opensocial: function(rest_command, params, callback){
+    call_opensocial: function(rest_command, params, callback){ $.gadgeteer.log('call_opensocial');
         // FIXME: when we have only 2 arguments...
         if( !$.isFunction(callback) ){
             callback = params;
@@ -359,45 +393,45 @@ $.extend($.gadgeteer, {
         },
 
 
-        get_owner_and_viewer_data: function(){
-            // Get information about the viewer and owner
-            $.gadgeteer.call_opensocial('/people/@viewer/@self', function(data, status) {
-                $.gadgeteer.viewer = data[0];
-                $.gadgeteer.viewer.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.viewer, 'viewer')};
-            });
-            $.gadgeteer.call_opensocial('/people/@owner/@self', function(data, status) {
-                $.gadgeteer.owner = data[0];
-                $.gadgeteer.owner.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.owner, 'owner')};
-            });
-            $.gadgeteer.call_opensocial('/appdata/', function(data, status) {
-                for (var id in data) {
-                    data = data[id];
-                    break;
+    get_owner_and_viewer_data: function(){ $.gadgeteer.log('get_owner_and_viewer_data');
+        // Get information about the viewer and owner
+        $.gadgeteer.call_opensocial('/people/@viewer/@self', function(data, status) {
+            $.gadgeteer.viewer = data[0];
+            $.gadgeteer.viewer.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.viewer, 'viewer')};
+        });
+        $.gadgeteer.call_opensocial('/people/@owner/@self', function(data, status) {
+            $.gadgeteer.owner = data[0];
+            $.gadgeteer.owner.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.owner, 'owner')};
+        });
+        $.gadgeteer.call_opensocial('/appdata/', function(data, status) {
+            for (var id in data) {
+                data = data[id];
+                break;
+            }
+            $.gadgeteer.data = function(key, value) {
+                if (value === undefined) {
+                    return data[key];
+                } else {
+                    data[key] = value;
+                    var params = {};
+                    params[key] = value;
+                    $.postData('/appdata/', params);
+                    return value;
                 }
-                $.gadgeteer.data = function(key, value) {
-                    if (value === undefined) {
-                        return data[key];
-                    } else {
-                        data[key] = value;
-                        var params = {};
-                        params[key] = value;
-                        $.postData('/appdata/', params);
-                        return value;
-                    }
-                };
-            });
-        },
+            };
+        });
+    },
 
 
-        test_error: function(){
-            $.gadgeteer.call_opensocial('/people_fail/@owner/@self', function(data, status) {
-                $.gadgeteer.owner = data[0];
-                $.gadgeteer.owner.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.owner, 'owner')};
-            });
-        },
+    test_error: function(){ $.gadgeteer.log('test_error');
+        $.gadgeteer.call_opensocial('/people_fail/@owner/@self', function(data, status) {
+            $.gadgeteer.owner = data[0];
+            $.gadgeteer.owner.osParams = function() {return $.gadgeteer._osParams.call($.gadgeteer.owner, 'owner')};
+        });
+    },
 
 
-    _osParams: function(name) {
+    _osParams: function(name) { $.gadgeteer.log('_osParams');
         var params = {};
         for (var attr in this) {
             if (!$.isFunction(this[attr])) {
@@ -445,7 +479,7 @@ $.extend($.gadgeteer, {
     },
 
 
-    simpleRequest: function(href, options) {
+    simpleRequest: function(href, options) { $.gadgeteer.log('simpleRequest');
         var params = {}
         if (options === undefined)
             options = {};
@@ -478,7 +512,7 @@ $.extend($.gadgeteer, {
     regularRequest: function(e) { },
 
 
-    ajaxRequest: function(e) {
+    ajaxRequest: function(e) { $.gadgeteer.log('ajaxRequest');
         if (e !== undefined) {
             e.preventDefault();
         }
@@ -521,7 +555,7 @@ $.extend($.gadgeteer, {
     },
 
 
-    navigateRequest: function(view, params, ownerId, e) {
+    navigateRequest: function(view, params, ownerId, e) { $.gadgeteer.log('navigateRequest');
         if (e !== undefined)
             e.preventDefault();
 
@@ -530,7 +564,7 @@ $.extend($.gadgeteer, {
     },
 
 
-    handleLinkBehaviour: function(e) {
+    handleLinkBehaviour: function(e) { $.gadgeteer.log('handleLinkBehaviour');
         var link = $(this);
         var matched = false;
         $.each($.gadgeteer.linkBehaviours, function(behaviour, callback) {
