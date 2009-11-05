@@ -257,6 +257,9 @@ $.extend($.gadgeteer, {
         if( $.gadgeteer.defaultTarget )
             ajaxSetupParams['target'] = $.gadgeteer.defaultTarget;
 
+        if( $.gadgeteer.http_timeout )
+            ajaxSetupParams['timeout'] = $.gadgeteer.http_timeout;
+
         $.ajaxSetup(ajaxSetupParams);
 
         $(document).ajaxSend(function(e, request, settings) {
