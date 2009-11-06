@@ -101,8 +101,9 @@ $.extend($.gadgeteer, {
     init: function(options) { $.gadgeteer.log('init', true);
         if($.gadgeteer.load_options(options)){
 
-            if ( !$.gadgeteer.options.noAjaxLinks )
+            if ( !$.gadgeteer.options.noAjaxLinks ){
                 $.gadgeteer.init_link_behaviour();
+            }
 
             if ( !$.gadgeteer.options.noAjaxForms )
                 $.gadgeteer.init_ajax_forms();
@@ -119,8 +120,6 @@ $.extend($.gadgeteer, {
     },
 
 
-
-
     // This will load options for first time
     load_options: function(options){ $.gadgeteer.log('load_options');
         // load options
@@ -129,10 +128,17 @@ $.extend($.gadgeteer, {
         else
             $.gadgeteer.options = options || $.gadgeteer.default_options;
 
+        // load default options
+        $.each($.gadgeteer.default_options, function( option, default_value){
+          if( $.gadgeteer.options[option] === undefined )
+            $.gadgeteer.options[option] = default_value;
+        });
+
         // fill locals from options
         $.gadgeteer.defaultTarget = $.gadgeteer.options.defaultTarget;
         if($.gadgeteer.options.host)
             $.gadgeteer.host = $.gadgeteer.options.host;
+
         $.gadgeteer.linkBehaviours = $.gadgeteer.options.linkBehaviours;
 
         if($.gadgeteer.options.customLoadingElement)
@@ -269,10 +275,12 @@ $.extend($.gadgeteer, {
     
     .ajaxSuccess(function(e, request, settings) { $.gadgeteer.log('ajaxSuccess : ' + request.url );
         $.gadgeteer.currentUrl = request.url;
-        if (settings.target) {
+
+        if(settings.target) {
             var html = request.responseText;
             $(settings.target).html(html);
         }
+
         $.gadgeteer.fit_height();
     })
 
@@ -575,7 +583,7 @@ $.extend($.gadgeteer, {
             if ($.isFunction(callback) && (match = callback.call(link, e))) {
                 var params = match === true ? [] : ($.isFunction(match.push) ? match : Array(match));
                 params.push(e);
-                //console.log('calling ', behaviour, ' link behaviour for ', link, ' with ', params);
+                $.gadgeteer.log('calling ', behaviour, ' link behaviour for ', link, ' with ', params);
                 var handler = behaviour+'Request';
                 handler = $.gadgeteer.linkBehaviours.handlers && $.gadgeteer.linkBehaviours.handlers[handler] || $.gadgeteer[handler];
                 handler.apply(link, params);
@@ -585,7 +593,7 @@ $.extend($.gadgeteer, {
         });
         if (!matched) {
             var def = $.gadgeteer.linkBehaviours.defaultBehavior || 'ajax';
-            //console.log('calling DEFAULT ', def, ' link behaviour for ', link, ' with ', e);
+            $.gadgeteer.log('calling DEFAULT ', def, ' link behaviour for ', link, ' with ', e);
             $.gadgeteer[def+'Request'].call(link, e);
         }
     },
