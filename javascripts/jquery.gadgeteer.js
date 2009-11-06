@@ -65,7 +65,8 @@ $.extend($.gadgeteer, {
     default_options: {
         // To disable link behavior override set this to true
         noAjaxLinks: false,
-        // To disable auto ajaxize forms set this to true
+        // To disable auto ajaxize forms set this to true 
+        // maybe you want to do this, it is an old and ugly option I think
         noAjaxForms: false,
         // This element is the default target of ajax calls
         defaultTarget: '#page',
@@ -164,6 +165,8 @@ $.extend($.gadgeteer, {
     },
   
 
+    // automatic ajax forms ... it is an ugly solution, maybe it wil deprecate.
+    // compatibility reasons only
     init_ajax_forms: function() { $.gadgeteer.log('init_ajax_forms');
         // Making sure submit input element values are submitted
         $('form input[type=submit]').livequery('click', function(e) {
@@ -177,6 +180,8 @@ $.extend($.gadgeteer, {
             var target = form.hasClass('silent') ? null : $.gadgeteer.defaultTarget;
             var params = [$.param(form.formToArray()), $.param($.gadgeteer.viewer.osParams()), $.param($.gadgeteer.owner.osParams())];
             var submit = form.data('submitClicked');
+            var redirects = form.hasClass('redirects') ? true : false;
+
             if (submit) {
                 if (submit.attr('name')) {
                     var param = {};
@@ -198,9 +203,25 @@ $.extend($.gadgeteer, {
                 oauth: 'signed',
                 target: target,
                 complete: function(request, status) {
-                        if (submit) {
+                        if(submit) {
+                            if( redirects ){
+                              try{
+                                var url = JSON.parse(request.responseText)['redirect'];
+                                $.ajax({
+                                  type: "GET",
+                                  url: $.gadgeteer.host + url,
+                                  data: $.gadgeteer.viewer.osParams()});
+                                return;
+                              }
+                              catch(e){
+                                // it is very ugly but I need to catch all attempt, when there is no redirect ...
+                                // please do not mix client_redirect and no redirect in the same action it's like a type mismatch
+                                // and the HACK:
+                                $($.gadgeteer.defaultTarget).html(request.responseText);
+                              }
+                            } 
                             var oldValue = submit.data('oldValue');
-                            if (oldValue) {
+                            if(oldValue) {
                                 submit.val(oldValue).get(0).disabled = false;
                                 submit.data('oldValue', null);
                             }
