@@ -3,6 +3,7 @@
   %ModulePrefs{<%= @options.model %>.module_prefs}
     - <%= @options.model %>.requires.each do |r|
       %Require{:feature => r}/
+    = "<Icon>#{<%= @options.model %>.config['icon']}</Icon>" if <%= @options.model %>.config['icon']
   = gadget_content_tag do
 <% if @options.sinatra %>
     = haml :canvas
