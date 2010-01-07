@@ -604,7 +604,7 @@ $.extend($.gadgeteer, {
             if ($.isFunction(callback) && (match = callback.call(link, e))) {
                 var params = match === true ? [] : ($.isFunction(match.push) ? match : Array(match));
                 params.push(e);
-                $.gadgeteer.log('calling ' + behaviour + ' link behaviour for ' + link + ' with ' + params);
+                $.gadgeteer.log('calling ' + behaviour );
                 var handler = behaviour+'Request';
                 handler = $.gadgeteer.linkBehaviours.handlers && $.gadgeteer.linkBehaviours.handlers[handler] || $.gadgeteer[handler];
                 handler.apply(link, params);
