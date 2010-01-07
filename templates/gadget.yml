@@ -3,6 +3,14 @@ defaults: &defaults
     title: "<%= @options.title %>"
     author: "<%= @options.author %>"
     author_email: "<%= @options.email %>"
+
+#    author_link: "http://virgo.hu"
+#    author_photo: "#{<%= @options.model%>.config['host']}/author.jpg"
+#    screenshot: "#{<%= @options.model%>.config['host']}/preview.gif"
+#    thumbnail: "#{<%= @options.model%>.config['host']}/icon_32.png"
+#    title_url: <%= @options.model%>.config['host']
+#    description: "This app will be very popular..."
+
   requires:
     - opensocial-0.8
     - opensocial-data
@@ -10,6 +18,14 @@ defaults: &defaults
     - dynamic-height
     - settitle
     - views
+    - setprefs
+
+#    - minimessage
+#    - flash
+
+  config:
+    icon: "\#{<%= @options.model%>.config['host']}/icon_16.png"
+    host: "http://myhost.somewhere"
 
 development:
   <<: *defaults
