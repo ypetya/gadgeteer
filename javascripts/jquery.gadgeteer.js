@@ -5,17 +5,10 @@
  * Requires opensocial-jQuery 1.0.4+
  *
  * @ypetya
- * Missing commits:
- *   fixing finalize 8d9963, parse json 63ed34, dontSwapdots 45c4c4
- *   ( we use the old way to get viewer and owner data )
 
 // TODO:
 
-// Step 0.
-// =======
-
-// Create gadget
-// like this one... 
+// Step 0. - Create gadget
 
 var Gadget = {
   frontendType: frontendType,
@@ -24,35 +17,20 @@ var Gadget = {
   defaultTarget: '#page-gadgeteer',
   noAjaxForms: true,
   timeout: 5000,
-  init_timeout: 1000,
-  refresher_timeout: 10000,
-  contentType: "text/html; charset=UTF-8",
-  limit: topLimit,
-  version: 'development 5.0'
-}
-
-// Step 1.
-// =======
-
-// Initialize your Gadgeteer at your like this:
-// use default_options as an example at initialize...
-
-$.gadgeteer.init({
-  host: backendHost,
   loadingMessage: 'Az oldal tölt <span class="ellipses">…</span>',
   errorMessage: 'Hiba történt, kérjük frissítsd az oldalt <span class="ellipses">…</span>',
   submitSendingMessage: 'Küldés...',
   linkBehaviours: Gadget.linkBehaviours,
   dontAddOsParams: true,
-  version: version,
-  ajaxCache: false
-});
+  ajaxCache: false,
+  version: 'development 5.0'
+}
 
-// Step 2.
-// =======
+// Step 1. - Initialize your Gadgeteer
 
-// Press play on tape...
-// ( it will wait for document to load, and initializes loadingElement )
+$.gadgeteer.init( Gadget );
+
+// Step 2. - Press play on tape...
 
 $.gadgeteer.start( Gadget.init );
 
@@ -169,7 +147,7 @@ $.extend($.gadgeteer, {
     },
   
 
-    // automatic ajax forms ... it is an ugly solution, maybe it wil deprecate.
+    // FIXME: automatic ajax forms ... it is an ugly solution, maybe it will deprecate.
     // compatibility reasons only
     init_ajax_forms: function() { $.gadgeteer.log('init_ajax_forms');
         // Making sure submit input element values are submitted
